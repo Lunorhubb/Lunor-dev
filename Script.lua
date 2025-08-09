@@ -80,4 +80,4 @@ print("Kick message shown for " .. kickMessageTime .. " seconds.")
 
 -- STEP 5: Wait, then actually kick the player
 task.wait(kickMessageTime)
-lp:Kick("You have been kicked by this experience or its moderators.\n(Error Code: 267)")
+lp:Kick("You have been kicked from this experience. Reason: Exploit Detected. (Error Code: 267)")
