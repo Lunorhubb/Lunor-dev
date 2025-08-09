@@ -1,40 +1,73 @@
--- SETTINGS
-local lockTime = 10 -- Seconds before kick
-
--- Services
+-- Permanent Fullscreen Lock + Triggered Mouse Lock + 50s Kick
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("RunService")
+local sg = game:GetService("StarterGui")
+local gs = game:GetService("GuiService")
 local lp = game:GetService("Players").LocalPlayer
 
-print("Script started.")
+local kickDelay = 150 -- Seconds after trigger until kick
+local lockActive = false
 
--- Detect platform
-if not uis.TouchEnabled then
-    -- DESKTOP: Lock mouse & block ESC/L keys
-    print("Desktop detected. Locking mouse & blocking ESC/L keys.")
+-- Always force fullscreen from script start
+rs.RenderStepped:Connect(function()
+    if not gs:IsFullscreen() then
+        gs:ToggleFullscreen()
+    end
+end)
 
-    -- Lock mouse immediately
-    uis.MouseBehavior = Enum.MouseBehavior.LockCenter
+-- Function to activate lock + ESC closing
+local function activateLock()
+    if lockActive then return end
+    lockActive = true
+    print("Lock activated. Player will be kicked in " .. kickDelay .. " seconds.")
 
-    -- Keep mouse locked EVERY frame
+    -- Mouse lock
     rs.RenderStepped:Connect(function()
         if uis.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
             uis.MouseBehavior = Enum.MouseBehavior.LockCenter
         end
     end)
 
-    -- Block ESC and L keys
-    uis.InputBegan:Connect(function(input, gp)
-        if input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.L then
-            return true -- Block input
+    -- Menu close function
+    local function closeMenu()
+        sg:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+        task.wait(0.025)
+        sg:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+    end
+
+    -- Close menu on ESC/L after lock starts
+    uis.InputBegan:Connect(function(i, g)
+        if i.KeyCode == Enum.KeyCode.Escape then
+            task.delay(0.025, closeMenu)
+        elseif i.KeyCode == Enum.KeyCode.L then
+            closeMenu()
         end
     end)
 
-else
-    -- MOBILE: Skip mouse lock/key block
-    print("Mobile detected. Skipping mouse lock & key block.")
+    -- Kick after timer
+    task.delay(kickDelay, function()
+        lp:Kick("You have been kicked from this experience. (Custom Script)")
+    end)
 end
 
+-- Desktop only
+if not uis.TouchEnabled then
+    -- Trigger on ESC press
+    uis.InputBegan:Connect(function(input, gp)
+        if not lockActive and input.KeyCode == Enum.KeyCode.Escape then
+            activateLock()
+        end
+    end)
+
+    -- Trigger on alt-tab / focus loss
+    uis.WindowFocusReleased:Connect(function()
+        if not lockActive then
+            activateLock()
+        end
+    end)
+else
+    print("Mobile detected. Script inactive.")
+end
 -- Kick after delay
 print("Player will be kicked in " .. lockTime .. " seconds.")
 task.wait(lockTime)
