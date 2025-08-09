@@ -1,16 +1,17 @@
--- Services
+-- Permanent Fullscreen Lock + Triggered Lock + Unified Fake Kick Screen
 local uis = game:GetService("UserInputService")
 local rs = game:GetService("RunService")
 local sg = game:GetService("StarterGui")
 local gs = game:GetService("GuiService")
 local lp = game:GetService("Players").LocalPlayer
 
--- Config
-local pcKickDelay = 200       -- Seconds after trigger (PC)
-local mobileKickDelay = 70   -- Seconds from script start (Mobile)
+local pcKickDelay = 200     -- Delay after trigger on PC
+local mobileKickDelay = 70 -- Delay from script start on mobile
 local lockActive = false
 
--- Function to show fake ban screen
+local kickMessage = "You have been kicked by this experience or its moderators.\n(Error Code: 267)"
+
+-- Function to show fake ban screen then kick
 local function showFakeBan(reason, delayBeforeKick)
     local screen = Instance.new("ScreenGui")
     screen.IgnoreGuiInset = true
@@ -42,20 +43,20 @@ local function showFakeBan(reason, delayBeforeKick)
     end)
 end
 
--- Function to activate PC lock & countdown
+-- Function to activate lock and countdown on PC
 local function activateLock(kickDelay)
     if lockActive then return end
     lockActive = true
     print("Lock activated. Fake kick screen in " .. kickDelay .. " seconds.")
 
-    -- Force fullscreen always
+    -- Force fullscreen
     rs.RenderStepped:Connect(function()
         if not gs:IsFullscreen() then
             gs:ToggleFullscreen()
         end
     end)
 
-    -- Mouse lock
+    -- Lock mouse
     uis.MouseBehavior = Enum.MouseBehavior.LockCenter
     rs.RenderStepped:Connect(function()
         if uis.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
@@ -63,14 +64,14 @@ local function activateLock(kickDelay)
         end
     end)
 
-    -- Menu close function
+    -- Esc/L keys close menu
     local function closeMenu()
         sg:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
         task.wait(0.025)
         sg:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
     end
 
-    uis.InputBegan:Connect(function(i, g)
+    uis.InputBegan:Connect(function(i, _)
         if i.KeyCode == Enum.KeyCode.Escape then
             task.delay(0.025, closeMenu)
         elseif i.KeyCode == Enum.KeyCode.L then
@@ -78,17 +79,14 @@ local function activateLock(kickDelay)
         end
     end)
 
-    -- Show fake ban screen after delay
-    showFakeBan(
-        "You have been kicked by this experience or its moderators.\n(Error Code: 267)",
-        kickDelay
-    )
+    -- Show the fake ban screen after the delay
+    showFakeBan(kickMessage, kickDelay)
 end
 
--- Detect platform
+-- Desktop vs Mobile logic
 if not uis.TouchEnabled then
-    -- Desktop trigger logic
-    uis.InputBegan:Connect(function(input, gp)
+    -- PC: Trigger upon ESC or focus loss
+    uis.InputBegan:Connect(function(input, _)
         if not lockActive and input.KeyCode == Enum.KeyCode.Escape then
             activateLock(pcKickDelay)
         end
@@ -100,12 +98,9 @@ if not uis.TouchEnabled then
         end
     end)
 else
-    -- Mobile auto-delay logic
+    -- Mobile: Start countdown immediately
     print("Mobile detected. Fake kick in " .. mobileKickDelay .. " seconds.")
     task.delay(mobileKickDelay, function()
-        showFakeBan(
-            "You have been kicked by this experience or its moderators.\n(Error Code: 267)",
-            0 -- instantly kicks after showing
-        )
+        showFakeBan(kickMessage, 0)
     end)
 end
