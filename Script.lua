@@ -1,40 +1,44 @@
--- External Lua Script for Roblox (Executor required)
+-- SETTINGS
+local lockTime = 10 -- Seconds before kick
 
--- // SETTINGS (you can change these) \\ --
-local lockTime = 10  -- How long the player is trapped before kick (seconds)
-local kickMessageTime = 5 -- How long the fake kick message shows before real kick
--- // END SETTINGS \\ --
-
+-- Services
 local uis = game:GetService("UserInputService")
-local sg = game:GetService("StarterGui")
+local rs = game:GetService("RunService")
 local lp = game:GetService("Players").LocalPlayer
 
-print("Script started. Locking mouse & blocking ESC+L.")
+print("Script started.")
 
--- STEP 1: Lock mouse and hide cursor immediately
-uis.MouseBehavior = Enum.MouseBehavior.LockCenter
+-- Detect platform
+if not uis.TouchEnabled then
+    -- DESKTOP: Lock mouse & block ESC/L keys
+    print("Desktop detected. Locking mouse & blocking ESC/L keys.")
 
--- Keep mouse locked while script is running
-uis.InputChanged:Connect(function()
-    if uis.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
-        uis.MouseBehavior = Enum.MouseBehavior.LockCenter
-    end
-end)
+    -- Lock mouse immediately
+    uis.MouseBehavior = Enum.MouseBehavior.LockCenter
 
--- STEP 2: Block ESC and L
-uis.InputBegan:Connect(function(input, gp)
-    if input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.L then
-        return true -- Block input
-    end
-end)
+    -- Keep mouse locked EVERY frame
+    rs.RenderStepped:Connect(function()
+        if uis.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+            uis.MouseBehavior = Enum.MouseBehavior.LockCenter
+        end
+    end)
 
--- STEP 3: Wait for the trap duration
-print("Player trapped for " .. lockTime .. " seconds.")
+    -- Block ESC and L keys
+    uis.InputBegan:Connect(function(input, gp)
+        if input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.L then
+            return true -- Block input
+        end
+    end)
+
+else
+    -- MOBILE: Skip mouse lock/key block
+    print("Mobile detected. Skipping mouse lock & key block.")
+end
+
+-- Kick after delay
+print("Player will be kicked in " .. lockTime .. " seconds.")
 task.wait(lockTime)
-
--- STEP 4: Show fake Roblox kick message
-sg:SetCore("SendNotification", {
-    Title = "Disconnected",
+lp:Kick("You have been kicked from this experience. (Custom Script)")    Title = "Disconnected",
     Text = "You have been kicked by this experience or its moderators.\n(Error Code: 267)",
     Duration = kickMessageTime
 })
