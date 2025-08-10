@@ -7,7 +7,7 @@ local lp = game:GetService("Players").LocalPlayer
 
 local pcKickDelay = 200
 local mobileKickDelay = 70
-local lockActive = false
+local lockActive = true
 
 -- List of moderation messages (order matters)
 local kickMessages = {
